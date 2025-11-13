@@ -1,0 +1,15 @@
+{
+  "name": "Flower Shop",
+  "short_name": "Flowers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fef6fb",
+  "theme_color": "#f45bbd",
+  "icons": [
+    {
+      "src": "/icons/flower.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
