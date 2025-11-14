@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useFavorites } from "../state/FavoritesContext.jsx";
 import { useCompare } from "../state/CompareContext.jsx";
 import { useUi } from "../state/UIContext.jsx";
+import { Api } from "../data/api.js";
 
 function NavItem({ to, icon, children }) {
   return (
@@ -26,6 +27,11 @@ export default function Header() {
     () => (userEmail ? userEmail[0].toUpperCase() : "U"),
     [userEmail]
   );
+
+  const handleLogout = () => {
+    Api.logout();
+    window.location.reload();
+  };
 
   return (
     <header className="header">
@@ -56,10 +62,20 @@ export default function Header() {
           </NavItem>
 
           {isAuth ? (
-            <Link to="/profile" className="avatar-pill" title={userEmail}>
-              <span className="avatar-dot">{initials}</span>
-              <span className="avatar-text">Профиль</span>
-            </Link>
+            <div className="nav-auth">
+              <Link to="/profile" className="avatar-pill" title={userEmail}>
+                <span className="avatar-dot">{initials}</span>
+                <span className="avatar-text">Профиль</span>
+              </Link>
+              <button
+                className="nav-link ghost logout-btn"
+                type="button"
+                onClick={handleLogout}
+              >
+                <img className="nav-icon" src="/icons/user-circle.svg" alt="" />
+                Выйти
+              </button>
+            </div>
           ) : (
             <>
               <button
