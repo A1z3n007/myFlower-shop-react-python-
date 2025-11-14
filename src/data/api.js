@@ -82,6 +82,27 @@ function detectApiBase() {
 }
 
 export const API_BASE = detectApiBase();
+const EXTRA_HEADERS = API_BASE.includes("ngrok")
+  ? { "ngrok-skip-browser-warning": "1" }
+  : {};
+
+function apiFetch(url, options = {}) {
+  if (options.headers instanceof Headers) {
+    Object.entries(EXTRA_HEADERS).forEach(([key, value]) => {
+      if (!options.headers.has(key)) {
+        options.headers.set(key, value);
+      }
+    });
+    return fetch(url, options);
+  }
+
+  if (Object.keys(EXTRA_HEADERS).length) {
+    const merged = { ...EXTRA_HEADERS, ...(options.headers || {}) };
+    return fetch(url, { ...options, headers: merged });
+  }
+
+  return fetch(url, options);
+}
 
 async function handle(res) {
   if (!res.ok) {
@@ -98,16 +119,16 @@ function authHeaders() {
 
 export const Api = {
   // products
-  getProducts: () => fetch(`${API_BASE}/products/`).then(handle),
-  getProduct: (id) => fetch(`${API_BASE}/products/${id}/`).then(handle),
+  getProducts: () => apiFetch(`${API_BASE}/products/`).then(handle),
+  getProduct: (id) => apiFetch(`${API_BASE}/products/${id}/`).then(handle),
   getSimilarProducts: (id) =>
-    fetch(`${API_BASE}/products/${id}/similar/`).then(handle),
+    apiFetch(`${API_BASE}/products/${id}/similar/`).then(handle),
   getBundleSuggestions: (id) =>
-    fetch(`${API_BASE}/products/${id}/bundles/`).then(handle),
+    apiFetch(`${API_BASE}/products/${id}/bundles/`).then(handle),
 
   // orders
   createOrder: (data) =>
-    fetch(`${API_BASE}/orders/`, {
+    apiFetch(`${API_BASE}/orders/`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(data),
@@ -115,28 +136,28 @@ export const Api = {
 
   getOrders: ({ mine = false, email = null } = {}) => {
     const q = mine ? "?mine=1" : email ? `?email=${encodeURIComponent(email)}` : "";
-    return fetch(`${API_BASE}/orders/${q}`, { headers: { ...authHeaders() } }).then(handle);
+    return apiFetch(`${API_BASE}/orders/${q}`, { headers: { ...authHeaders() } }).then(handle);
   },
 
   getOrder: (id) =>
-    fetch(`${API_BASE}/orders/${id}/`, { headers: { ...authHeaders() } }).then(handle),
+    apiFetch(`${API_BASE}/orders/${id}/`, { headers: { ...authHeaders() } }).then(handle),
 
   requestDelivery: (id, payload) =>
-    fetch(`${API_BASE}/orders/${id}/request_delivery/`, {
+    apiFetch(`${API_BASE}/orders/${id}/request_delivery/`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(payload || {}),
     }).then(handle),
 
   setOrderStatus: (id, status) =>
-    fetch(`${API_BASE}/orders/${id}/set_status/`, {
+    apiFetch(`${API_BASE}/orders/${id}/set_status/`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ status }),
     }).then(handle),
 
   setDeliveryStatus: (id, delivery_status) =>
-    fetch(`${API_BASE}/orders/${id}/set_delivery_status/`, {
+    apiFetch(`${API_BASE}/orders/${id}/set_delivery_status/`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ delivery_status }),
@@ -144,7 +165,7 @@ export const Api = {
   uploadDeliveryPhoto: (token, file) => {
     const form = new FormData();
     form.append("photo", file);
-    return fetch(`${API_BASE}/orders/photo/${token}/`, {
+    return apiFetch(`${API_BASE}/orders/photo/${token}/`, {
       method: "POST",
       body: form,
     }).then(handle);
@@ -152,7 +173,7 @@ export const Api = {
 
   // auth (JWT)
   async login({ email, password }) {
-    const res = await fetch(`${API_BASE}/auth/login/`, {
+    const res = await apiFetch(`${API_BASE}/auth/login/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       // SimpleJWT ждёт поле "username"
@@ -165,7 +186,7 @@ export const Api = {
   },
 
   register: ({ name, email, password }) =>
-    fetch(`${API_BASE}/auth/register/`, {
+    apiFetch(`${API_BASE}/auth/register/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password }),
@@ -180,66 +201,66 @@ export const Api = {
   // account
   getProfile: ({ mine = true, email = null } = {}) => {
     const q = mine ? "" : email ? `?email=${encodeURIComponent(email)}` : "";
-    return fetch(`${API_BASE}/account/profile/${q}`, { headers: { ...authHeaders() } }).then(handle);
+    return apiFetch(`${API_BASE}/account/profile/${q}`, { headers: { ...authHeaders() } }).then(handle);
   },
 
   getFavorites: ({ mine = true, email = null } = {}) => {
     const q = mine ? "" : email ? `?email=${encodeURIComponent(email)}` : "";
-    return fetch(`${API_BASE}/account/favorites/${q}`, { headers: { ...authHeaders() } }).then(handle);
+    return apiFetch(`${API_BASE}/account/favorites/${q}`, { headers: { ...authHeaders() } }).then(handle);
   },
   toggleFavorite: (product_id, action = "toggle") =>
-    fetch(`${API_BASE}/account/favorites/`, {
+    apiFetch(`${API_BASE}/account/favorites/`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ product_id, action }),
     }).then(handle),
 
   validateCoupon: (code, subtotal) =>
-    fetch(`${API_BASE}/coupons/validate/`, {
+    apiFetch(`${API_BASE}/coupons/validate/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, subtotal }),
     }).then(handle),
 
-  getDeliverySlots: () => fetch(`${API_BASE}/delivery/slots/`).then(handle),
+  getDeliverySlots: () => apiFetch(`${API_BASE}/delivery/slots/`).then(handle),
   autocompleteAddress: (q) =>
-    fetch(`${API_BASE}/delivery/autocomplete/?q=${encodeURIComponent(q)}`).then(handle),
+    apiFetch(`${API_BASE}/delivery/autocomplete/?q=${encodeURIComponent(q)}`).then(handle),
 
   getSavedAddresses: () =>
-    fetch(`${API_BASE}/account/addresses/`, {
+    apiFetch(`${API_BASE}/account/addresses/`, {
       headers: { ...authHeaders() },
     }).then(handle),
   createAddress: (payload) =>
-    fetch(`${API_BASE}/account/addresses/`, {
+    apiFetch(`${API_BASE}/account/addresses/`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(payload),
     }).then(handle),
   deleteAddress: (id) =>
-    fetch(`${API_BASE}/account/addresses/`, {
+    apiFetch(`${API_BASE}/account/addresses/`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ id }),
     }).then(handle),
 
   quickOrder: (payload) =>
-    fetch(`${API_BASE}/orders/quick/`, {
+    apiFetch(`${API_BASE}/orders/quick/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }).then(handle),
 
   getProductReviews: (productId) =>
-    fetch(`${API_BASE}/product-reviews/?product=${productId}`).then(handle),
+    apiFetch(`${API_BASE}/product-reviews/?product=${productId}`).then(handle),
   addProductReview: (payload) =>
-    fetch(`${API_BASE}/product-reviews/`, {
+    apiFetch(`${API_BASE}/product-reviews/`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(payload),
     }).then(handle),
 
   fireAnalytics: (name, payload = {}) =>
-    fetch(`${API_BASE}/analytics/events/`, {
+    apiFetch(`${API_BASE}/analytics/events/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -251,7 +272,7 @@ export const Api = {
     }).then(handle),
 
   createStripeIntent: ({ amount, currency = "kzt" }) =>
-    fetch(`${API_BASE}/payments/stripe/intent/`, {
+    apiFetch(`${API_BASE}/payments/stripe/intent/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount, currency }),
