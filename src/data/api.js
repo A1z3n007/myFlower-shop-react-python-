@@ -1,4 +1,87 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000/api";
+const LOCAL_API_BASE = "http://127.0.0.1:8000/api";
+const API_OVERRIDE_KEY = "api_base_override";
+
+function readStoredOverride() {
+  try {
+    return localStorage.getItem(API_OVERRIDE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredOverride(value) {
+  try {
+    localStorage.setItem(API_OVERRIDE_KEY, value);
+  } catch {
+    // storage might be unavailable (private mode) — ignore
+  }
+}
+
+function normalizeBase(raw) {
+  if (!raw) return "";
+  let base = raw.trim();
+  if (!base) return "";
+
+  // ensure protocol for URL parsing
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(base)) {
+    base = `https://${base}`;
+  }
+
+  try {
+    const url = new URL(base);
+    // If no path specified, default to /api for convenience.
+    if (url.pathname === "/" || url.pathname === "") {
+      url.pathname = "/api";
+    }
+    // Remove trailing slash while keeping potential nested paths (/api/v1)
+    const normalized = `${url.origin}${url.pathname}`.replace(/\/+$/, "");
+    return normalized;
+  } catch (err) {
+    console.warn("Invalid API base, falling back to local:", raw, err);
+    return LOCAL_API_BASE;
+  }
+}
+
+function detectApiBase() {
+  if (typeof window === "undefined") {
+    return normalizeBase(import.meta.env.VITE_API_BASE || LOCAL_API_BASE);
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const queryOverride = params.get("apiBase") || params.get("api") || "";
+  const globalOverride = window.__FLOWER_API_BASE__;
+  const storedOverride = readStoredOverride();
+
+  let candidate =
+    queryOverride ||
+    globalOverride ||
+    storedOverride ||
+    import.meta.env.VITE_API_BASE ||
+    "";
+
+  if (!candidate) {
+    const host = window.location.hostname;
+    const isLocal =
+      !host ||
+      host === "localhost" ||
+      host.startsWith("127.") ||
+      host.startsWith("192.168.") ||
+      host.startsWith("10.");
+    candidate = isLocal
+      ? LOCAL_API_BASE
+      : `${window.location.origin.replace(/\/$/, "")}/api`;
+  }
+
+  const normalized = normalizeBase(candidate);
+
+  if (queryOverride) {
+    writeStoredOverride(normalized);
+  }
+
+  return normalized;
+}
+
+export const API_BASE = detectApiBase();
 
 async function handle(res) {
   if (!res.ok) {
