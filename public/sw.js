@@ -1,9 +1,12 @@
-const CACHE = "flower-shop-cache-v3";
+const CACHE = "flower-shop-cache-v4";
 const OFFLINE_URLS = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(OFFLINE_URLS)).then(self.skipWaiting())
+    caches
+      .open(CACHE)
+      .then((cache) => cache.addAll(OFFLINE_URLS))
+      .then(() => self.skipWaiting())
   );
 });
 
